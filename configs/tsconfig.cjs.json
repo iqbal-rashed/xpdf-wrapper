@@ -1,0 +1,11 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "lib": ["ES6", "DOM"],
+        "target": "ES6",
+        "module": "CommonJS",
+        "moduleResolution": "Node"
+    }
+}
