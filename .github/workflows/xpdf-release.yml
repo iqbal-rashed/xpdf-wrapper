@@ -32,13 +32,10 @@ jobs:
                   DOWNLOAD_PAGE="https://www.xpdfreader.com/download.html"
                   HTML="$(curl -fsSL "$DOWNLOAD_PAGE")"
 
-                  VERSION="$(python3 - <<'PY' <<<"$HTML"
+                  VERSION="$(python3 - <<'PY'
                     import re, sys
 
                     html = sys.stdin.read()
-
-                    # Capture versions from filenames like:
-                    # xpdf-tools-linux-4.06.tar.gz / xpdf-tools-win-4.06.zip / xpdf-tools-mac-4.06.tar.gz
                     pattern = re.compile(r"xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\.[0-9]+)+)")
                     versions = pattern.findall(html)
 
@@ -50,8 +47,7 @@ jobs:
 
                     latest = max(versions, key=key)
                     print(latest)
-                    PY
-                    )"
+                    PY)"
 
                   echo "Latest upstream version: $VERSION"
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
