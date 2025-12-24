@@ -32,7 +32,7 @@ jobs:
                   DOWNLOAD_PAGE="https://www.xpdfreader.com/download.html"
                   HTML="$(curl -fsSL "$DOWNLOAD_PAGE")"
 
-                  VERSION="$(python3 - <<'PY'
+                  VERSION="$(python3 - <<'PY' <<<"$HTML"
                     import re, sys
 
                     html = sys.stdin.read()
@@ -51,7 +51,7 @@ jobs:
                     latest = max(versions, key=key)
                     print(latest)
                     PY
-                  <<< "$HTML")"
+                    )"
 
                   echo "Latest upstream version: $VERSION"
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
