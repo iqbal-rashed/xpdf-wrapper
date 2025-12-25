@@ -175,16 +175,16 @@ jobs:
 
           # Linux
           zip_bins "${LINUX_DIR}" bin32  "xpdf-tools-linux-${VERSION}-x86.zip"
-          zip_bins "${LINUX_DIR}" bin64  "xpdf-tools-linux-${VERSION}-x86_64.zip"
+          zip_bins "${LINUX_DIR}" bin64  "xpdf-tools-linux-${VERSION}-x64.zip"
           zip_bins "${LINUX_DIR}" binARM "xpdf-tools-linux-${VERSION}-arm.zip"
 
           # macOS
-          zip_bins "${MAC_DIR}"   bin64  "xpdf-tools-mac-${VERSION}-x86_64.zip"
+          zip_bins "${MAC_DIR}"   bin64  "xpdf-tools-mac-${VERSION}-x64.zip"
           zip_bins "${MAC_DIR}"   binARM "xpdf-tools-mac-${VERSION}-arm.zip"
 
           # Windows
           zip_bins "${WIN_DIR}"   bin32  "xpdf-tools-win-${VERSION}-x86.zip"
-          zip_bins "${WIN_DIR}"   bin64  "xpdf-tools-win-${VERSION}-x86_64.zip"
+          zip_bins "${WIN_DIR}"   bin64  "xpdf-tools-win-${VERSION}-x64.zip"
           zip_bins "${WIN_DIR}"   binARM "xpdf-tools-win-${VERSION}-arm.zip"
 
           ls -la work/release
