@@ -1,4 +1,4 @@
-export { pdftotext } from "./pdftotext";
+export { pdftotext, type PdftotextResult } from "./pdftotext";
 export { pdftops } from "./pdftops";
 export { pdftoppm } from "./pdftoppm";
 export { pdftopng } from "./pdftopng";

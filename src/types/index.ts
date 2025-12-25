@@ -11,8 +11,6 @@ export interface RunOptions {
   stdio?: "pipe" | "inherit" | "ignore";
   encoding?: BufferEncoding;
   binDir?: string;
-  useSystem?: boolean;
-  configBinDir?: string;
 }
 
 export interface RunResult {
@@ -120,7 +118,6 @@ export type PdfdetachOptions = CommonOptions & {
  */
 export type XpdfConfig = {
   binDir?: string;
-  useSystem?: boolean;
   run?: RunOptions;
 };
 
@@ -217,3 +214,13 @@ export interface BatchResult {
   pdfToPng?: OneOrMany<RunResult>;
   pdfToHtml?: OneOrMany<RunResult>;
 }
+
+/**
+ * PDF input - can be a file path or a Buffer
+ */
+export type PdfInput = string | Buffer;
+
+/**
+ * One or many PDF inputs
+ */
+export type PdfInputOneOrMany = PdfInput | PdfInput[];

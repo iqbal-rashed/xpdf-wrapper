@@ -1,36 +1,38 @@
 import { run, RunOptions, RunResult } from "../core/run";
-import { PdftohtmlOptions } from "../types";
+import { PdftohtmlOptions, PdfInput } from "../types";
+import { withTempPdf } from "../utils/input";
 import { applyCommonOptions, collectExtraArgs } from "./shared";
 
 export async function pdftohtml(
-  inputPdf: string,
+  inputPdf: PdfInput,
   outputPath?: string,
   options?: PdftohtmlOptions,
   extraArgs?: string[],
   runOpts?: RunOptions
 ): Promise<RunResult> {
-  const args: string[] = [];
-  applyCommonOptions(args, options);
+  return withTempPdf(inputPdf, async (pdfPath) => {
+    const args: string[] = [];
+    applyCommonOptions(args, options);
 
-  if (options?.zoom) {
-    args.push("-zoom", String(options.zoom));
-  }
-  if (options?.xml) {
-    args.push("-xml");
-  }
-  if (options?.noframes) {
-    args.push("-noframes");
-  }
-  if (options?.meta) {
-    args.push("-meta");
-  }
+    if (options?.zoom) {
+      args.push("-zoom", String(options.zoom));
+    }
+    if (options?.xml) {
+      args.push("-xml");
+    }
+    if (options?.noframes) {
+      args.push("-noframes");
+    }
+    if (options?.meta) {
+      args.push("-meta");
+    }
 
-  args.push(...collectExtraArgs(options, extraArgs));
-  args.push(inputPdf);
-  if (outputPath) {
-    args.push(outputPath);
-  }
+    args.push(...collectExtraArgs(options, extraArgs));
+    args.push(pdfPath);
+    if (outputPath) {
+      args.push(outputPath);
+    }
 
-  return run("pdftohtml", args, runOpts);
+    return run("pdftohtml", args, runOpts);
+  });
 }
-

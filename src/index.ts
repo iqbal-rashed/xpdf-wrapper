@@ -24,6 +24,8 @@ export {
   pdfdetach
 } from "./tools/index";
 
+export type { PdftotextResult } from "./tools/index";
+
 export { PACKAGE_ROOT ,DEFAULT_BIN_DIR} from "./utils/paths";
 
 // Class API
@@ -69,4 +71,8 @@ export type {
   BatchMethod,
   BatchOptions,
   BatchResult,
+  
+  // Input types
+  PdfInput,
+  PdfInputOneOrMany,
 } from "./types/index";

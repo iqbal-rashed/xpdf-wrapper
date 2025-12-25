@@ -11,11 +11,7 @@ export async function run(
   args: string[],
   options: RunOptions = {}
 ): Promise<RunResult> {
-  const command = resolveBinaryPath(tool, {
-    binDir: options.binDir,
-    configBinDir: options.configBinDir,
-    preferSystem: options.useSystem
-  });
+  const command = resolveBinaryPath(tool, { binDir: options.binDir });
   const start = Date.now();
   const stdio = options.stdio ?? "pipe";
 
@@ -71,11 +67,7 @@ export function runSync(
   args: string[],
   options: RunOptions = {}
 ): RunResultSync {
-  const command = resolveBinaryPath(tool, {
-    binDir: options.binDir,
-    configBinDir: options.configBinDir,
-    preferSystem: options.useSystem
-  });
+  const command = resolveBinaryPath(tool, { binDir: options.binDir });
   const start = Date.now();
   const stdio = options.stdio ?? "pipe";
 

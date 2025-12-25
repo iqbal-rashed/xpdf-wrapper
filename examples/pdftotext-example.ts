@@ -1,12 +1,12 @@
 /**
  * Example: Extract text from PDF
- * 
+ *
  * Build: npm run build
  * Run: npx ts-node examples/pdftotext-example.ts
  */
 
 import path from "path";
-import { pdftotext ,PACKAGE_ROOT} from "../src";
+import { pdftotext, PACKAGE_ROOT } from "../src";
 
 const SAMPLE_PDF = path.join(PACKAGE_ROOT, "fixtures", "sample.pdf");
 
@@ -16,12 +16,9 @@ async function main() {
 
   console.log(`Extracting text from: ${inputPdf}`);
 
-  // Extract text with layout preservation
+  // Extract text (defaults to stdout/result.text if no output file specified)
   const result = await pdftotext(inputPdf, outputText, {
-    layout: true,      // Preserve original layout
-    // encoding: "UTF-8", // Optional: specify encoding
-    // firstPage: 1,      // Optional: start page
-    // lastPage: 5,       // Optional: end page
+    layout: true, 
   });
 
   if (result.exitCode !== 0) {
@@ -32,11 +29,11 @@ async function main() {
   if (outputText) {
     console.log(`Text extracted to: ${outputText}`);
   } else {
-    // If no output file, pdftotext outputs to stdout
+    // Access the extracted text directly from the result
     console.log("\n=== Extracted Text (first 500 chars) ===");
-    console.log(result.stdout.slice(0, 500));
-    if (result.stdout.length > 500) {
-      console.log(`\n... (${result.stdout.length - 500} more characters)`);
+    console.log(result.text.slice(0, 500));
+    if (result.text.length > 500) {
+      console.log(`\n... (${result.text.length - 500} more characters)`);
     }
   }
 

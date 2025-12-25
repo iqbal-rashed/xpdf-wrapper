@@ -2,10 +2,10 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import https from "https";
-import { extract } from "7zip-wrapper"; 
+import { extract, ensureBinary } from "7zip-wrapper"; 
 import { DEFAULT_BIN_DIR } from "../utils/paths";
 
-const BASE_URL = "https://github.com/iqbal-rashed/node-xpdf/releases/download/latest";
+const BASE_URL = "https://github.com/iqbal-rashed/xpdf-wrapper/releases/download/latest";
 
 const ASSETS = [
   { platform: "win", arch: "x64", filename: "xpdf-tools-win-4.06-x64.zip" },
@@ -141,7 +141,8 @@ const main = async () => {
   }
 
   // Uses 7zip-wrapper extract
-  await extract(zipPath, { outputDir: DEFAULT_BIN_DIR, overwrite: true });
+  await ensureBinary()
+  await extract(zipPath, { outputDir: DEFAULT_BIN_DIR, overwrite: true ,});
 
   chmodBinFiles(DEFAULT_BIN_DIR);
 

@@ -21,12 +21,17 @@ import {
   BatchMethod,
   BatchOptions,
   BatchResult,
+  PdfInput,
+  PdfInputOneOrMany,
 } from "../types";
+import {
+  normalizePdfInputs,
+} from "../utils/input";
 import { pdfdetach } from "../tools/pdfdetach";
 import { pdffonts } from "../tools/pdffonts";
 import { pdfinfo } from "../tools/pdfinfo";
 import { pdfimages } from "../tools/pdfimages";
-import { pdftotext } from "../tools/pdftotext";
+import { pdftotext, PdftotextResult } from "../tools/pdftotext";
 import { pdftops } from "../tools/pdftops";
 import { pdftoppm } from "../tools/pdftoppm";
 import { pdftopng } from "../tools/pdftopng";
@@ -111,12 +116,14 @@ function parsePdfInfoOutput(stdout: string): Record<string, string> {
   return info;
 }
 
-async function mapPdfs<T>(
-  pdfs: string[],
-  fn: (pdf: string, index: number) => Promise<T>
+async function mapPdfInputs<T>(
+  inputs: PdfInput[],
+  fn: (pdf: PdfInput, index: number) => Promise<T>
 ): Promise<OneOrMany<T>> {
-  const results = await Promise.all(pdfs.map((pdf, index) => fn(pdf, index)));
-  return pdfs.length === 1 ? results[0] : results;
+  const results = await Promise.all(
+    inputs.map((input, index) => fn(input, index))
+  );
+  return inputs.length === 1 ? results[0] : results;
 }
 
 /**
@@ -134,28 +141,20 @@ export class Xpdf {
 
   private mergeRunOptions(runOpts?: RunOptions): RunOptions {
     const merged: RunOptions = { ...this.defaultRun, ...runOpts };
-    const instanceBinDir = this.config.binDir ?? this.defaultRun.binDir;
-    if (runOpts?.binDir) {
-      merged.binDir = runOpts.binDir;
-      merged.configBinDir = undefined;
-    } else {
-      merged.binDir = undefined;
-      merged.configBinDir = instanceBinDir;
-    }
-    merged.useSystem =
-      runOpts?.useSystem ?? this.config.useSystem ?? this.defaultRun.useSystem;
+    // Use explicit binDir from runOpts, or fall back to config binDir
+    merged.binDir = runOpts?.binDir ?? this.config.binDir ?? this.defaultRun.binDir;
     return merged;
   }
 
-  private normalizePdfs(pdf: string | string[]): string[] {
-    return Array.isArray(pdf) ? pdf : [pdf];
+  private normalizePdfs(pdf: PdfInputOneOrMany): PdfInput[] {
+    return normalizePdfInputs(pdf);
   }
 
   /**
    * List or extract embedded files from PDF(s)
    */
   async pdfDetach(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfdetachOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<PdfDetachResult>> {
@@ -166,7 +165,7 @@ export class Xpdf {
         ? options.list
         : !options.saveAll && !options.save;
 
-    return mapPdfs(pdfs, async (pdfPath) => {
+    return mapPdfInputs(pdfs, async (pdfPath) => {
       const result = await pdfdetach(
         pdfPath,
         { ...options, list: shouldList },
@@ -184,13 +183,13 @@ export class Xpdf {
    * List fonts used in PDF(s)
    */
   async pdfFonts(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdffontsOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<PdfFontsResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath) => {
+    return mapPdfInputs(pdfs, async (pdfPath) => {
       const result = await pdffonts(pdfPath, options, undefined, mergedRun);
       return { result, fonts: parsePdfFontsOutput(result.stdout) };
     });
@@ -200,13 +199,13 @@ export class Xpdf {
    * Get PDF metadata/info
    */
   async pdfInfo(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfinfoOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<PdfInfoResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath) => {
+    return mapPdfInputs(pdfs, async (pdfPath) => {
       const result = await pdfinfo(pdfPath, options, undefined, mergedRun);
       return { result, info: parsePdfInfoOutput(result.stdout) };
     });
@@ -216,13 +215,13 @@ export class Xpdf {
    * Extract images from PDF(s)
    */
   async pdfImages(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfImagesClassOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<RunResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputRoot = selectByIndex(options.outputRoot, index);
       const mergedOptions: PdfimagesOptions = {
         ...options,
@@ -237,13 +236,13 @@ export class Xpdf {
    * Extract text from PDF(s)
    */
   async pdfToText(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfToTextOptions = {},
     runOpts?: RunOptions
-  ): Promise<OneOrMany<RunResult>> {
+  ): Promise<OneOrMany<PdftotextResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputText = selectByIndex(options.outputText, index);
       return pdftotext(pdfPath, outputText, options, undefined, mergedRun);
     });
@@ -253,13 +252,13 @@ export class Xpdf {
    * Convert PDF to PostScript
    */
   async pdfToPs(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfToPsOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<RunResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputPs = selectByIndex(options.outputPs, index);
       return pdftops(pdfPath, outputPs, options, undefined, mergedRun);
     });
@@ -269,13 +268,13 @@ export class Xpdf {
    * Convert PDF to PPM images
    */
   async pdfToPpm(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfToPpmOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<RunResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputRoot = selectByIndex(options.outputRoot, index);
       return pdftoppm(pdfPath, outputRoot, options, undefined, mergedRun);
     });
@@ -285,13 +284,13 @@ export class Xpdf {
    * Convert PDF to PNG images
    */
   async pdfToPng(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfToPngOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<RunResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputRoot = selectByIndex(options.outputRoot, index);
       return pdftopng(pdfPath, outputRoot, options, undefined, mergedRun);
     });
@@ -301,13 +300,13 @@ export class Xpdf {
    * Convert PDF to HTML
    */
   async pdfToHtml(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     options: PdfToHtmlOptions = {},
     runOpts?: RunOptions
   ): Promise<OneOrMany<RunResult>> {
     const pdfs = this.normalizePdfs(pdf);
     const mergedRun = this.mergeRunOptions(runOpts);
-    return mapPdfs(pdfs, async (pdfPath, index) => {
+    return mapPdfInputs(pdfs, async (pdfPath, index) => {
       const outputPath = selectByIndex(options.outputPath, index);
       return pdftohtml(pdfPath, outputPath, options, undefined, mergedRun);
     });
@@ -317,7 +316,7 @@ export class Xpdf {
    * Run multiple methods at once on the same PDF(s)
    */
   async batch(
-    pdf: string | string[],
+    pdf: PdfInputOneOrMany,
     methods: BatchMethod[],
     options: BatchOptions = {},
     runOpts?: RunOptions
