@@ -183,12 +183,24 @@ jobs:
       - name: Upload assets to 'latest' release (only when new)
         if: steps.check.outputs.skip != 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="latest"
-          VERSION="${{ steps.upstream.outputs.version }}"
 
-          gh release edit "$TAG" --notes "Automated packaging of Xpdf command line tools v${VERSION}."
-          gh release upload "$TAG" work/release/* --clobber
+          title="Xpdf ${{ steps.upstream.outputs.version }} (latest)"
+          ver="${{ steps.upstream.outputs.version }}"
+
+          body=$'Moving "latest" release for xpdf console builds.\n\n'
+          body+=$'Upstream version: '"$ver"$'\n'
+          body+=$'Source: https://www.xpdfreader.com/\n\n'
+          body+=$'Automated packaging of Xpdf command line tools whenever upstream version changes.\n'
+
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title "$title" --notes "$body"
+          else
+            gh release create latest --title "$title" --notes "$body"
+          fi
+
+          # Upload new assets (clobber replaces same-name assets)
+          gh release upload latest work/release/* --clobber
