@@ -32,8 +32,9 @@ jobs:
           HTML="$(curl -fsSL "$DOWNLOAD_PAGE")"
 
           VERSION="$(
-            python3 -c "import re,sys; html=sys.stdin.read(); pat=re.compile(r'xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\\.[0-9]+)+)'); vers=pat.findall(html);if not vers: raise SystemExit('ERROR: Could not find any xpdf-tools-* version strings on download page.');key=lambda v: tuple(int(x) for x in v.split('.')); print(max(vers, key=key))" <<< "$HTML"
+            python3 -c "import re,sys; html=sys.stdin.read(); pat=re.compile(r'xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\\.[0-9]+)+)'); vers=pat.findall(html); (vers or (_ for _ in ()).throw(SystemExit('ERROR: Could not find any xpdf-tools-* version strings on download page.'))); key=lambda v: tuple(map(int,v.split('.'))); print(max(vers,key=key))" <<<"$HTML"
           )"
+
 
           echo "Latest upstream version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
