@@ -143,6 +143,7 @@ jobs:
           VERSION="${{ steps.upstream.outputs.version }}"
 
           mkdir -p work/release
+          OUT_DIR="$(pwd)/work/release"
 
           LINUX_DIR="xpdf-tools-linux-${VERSION}"
           MAC_DIR="xpdf-tools-mac-${VERSION}"
@@ -154,26 +155,34 @@ jobs:
             local out_name="$3"   # output zip filename
 
             local src="work/extract/${base_dir}/${bin_dir}"
+
+            # Skip if folder missing
             if [[ ! -d "$src" ]]; then
               echo "Skip: missing $src"
               return 0
             fi
 
-            # zip ONLY the bin files; -j = junk paths (files at zip root)
-            (cd "$src" && zip -qr "../../../work/release/${out_name}" .)
-            echo "Created: work/release/${out_name}"
+            # Skip if folder exists but has no files
+            if ! find "$src" -maxdepth 1 -type f -print -quit | grep -q .; then
+              echo "Skip: empty $src"
+              return 0
+            fi
+
+            # Zip only the bin files, no extra folders in zip
+            (cd "$src" && zip -qr "${OUT_DIR}/${out_name}" .)
+            echo "Created: ${OUT_DIR}/${out_name}"
           }
 
-          # Linux (bin-only)
+          # Linux
           zip_bins "${LINUX_DIR}" bin32  "xpdf-tools-linux-${VERSION}-x86.zip"
           zip_bins "${LINUX_DIR}" bin64  "xpdf-tools-linux-${VERSION}-x86_64.zip"
           zip_bins "${LINUX_DIR}" binARM "xpdf-tools-linux-${VERSION}-arm.zip"
 
-          # macOS (bin-only)
+          # macOS
           zip_bins "${MAC_DIR}"   bin64  "xpdf-tools-mac-${VERSION}-x86_64.zip"
           zip_bins "${MAC_DIR}"   binARM "xpdf-tools-mac-${VERSION}-arm.zip"
 
-          # Windows (bin-only)
+          # Windows
           zip_bins "${WIN_DIR}"   bin32  "xpdf-tools-win-${VERSION}-x86.zip"
           zip_bins "${WIN_DIR}"   bin64  "xpdf-tools-win-${VERSION}-x86_64.zip"
           zip_bins "${WIN_DIR}"   binARM "xpdf-tools-win-${VERSION}-arm.zip"
