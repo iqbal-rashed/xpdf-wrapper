@@ -1,0 +1,215 @@
+name: Sync Xpdf Tools (weekly -> latest release)
+
+on:
+  schedule:
+    # Every Monday 03:00 UTC (~09:00 Asia/Dhaka)
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xpdf-tools-latest
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine latest upstream Xpdf tools version
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          DOWNLOAD_PAGE="https://www.xpdfreader.com/download.html"
+          HTML="$(curl -fsSL "$DOWNLOAD_PAGE")"
+
+          VERSION="$(
+            python3 -c "import re,sys; html=sys.stdin.read(); pat=re.compile(r'xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\\.[0-9]+)+)'); vers=pat.findall(html); (vers or (_ for _ in ()).throw(SystemExit('ERROR: Could not find any xpdf-tools-* version strings on download page.'))); key=lambda v: tuple(map(int,v.split('.'))); print(max(vers,key=key))" <<<"$HTML"
+          )"
+
+
+          echo "Latest upstream version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if latest release already has this version
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.upstream.outputs.version }}"
+          TAG="latest"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            ASSETS="$(gh release view "$TAG" --json assets -q '.assets[].name')"
+            if echo "$ASSETS" | grep -q "xpdf-tools-linux-${VERSION}\.tar\.gz"; then
+              echo "Found xpdf-tools-linux-${VERSION}.tar.gz on release '$TAG' => skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "No matching assets found on release '$TAG' => continuing."
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare tag 'latest' and release (only when new)
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="latest"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG"
+          git push -f origin "$TAG"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release '$TAG' exists."
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "Automated Xpdf tools sync." \
+              --latest \
+              --target "$GITHUB_SHA"
+          fi
+
+      - name: Remove existing assets from 'latest' release (only when new)
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="latest"
+
+          RELEASE_ID="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq '.id')"
+          ASSET_IDS="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" --jq '.[].id' || true)"
+
+          if [[ -n "${ASSET_IDS}" ]]; then
+            while read -r id; do
+              [[ -z "$id" ]] && continue
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}"
+            done <<< "${ASSET_IDS}"
+          fi
+
+      - name: Download archives (only when new)
+        if: steps.check.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.upstream.outputs.version }}"
+          BASE_URL="https://dl.xpdfreader.com"
+
+          mkdir -p work/download
+          cd work/download
+
+          curl -fL -o "xpdf-tools-linux-${VERSION}.tar.gz" "${BASE_URL}/xpdf-tools-linux-${VERSION}.tar.gz"
+          curl -fL -o "xpdf-tools-mac-${VERSION}.tar.gz"  "${BASE_URL}/xpdf-tools-mac-${VERSION}.tar.gz"
+          curl -fL -o "xpdf-tools-win-${VERSION}.zip"      "${BASE_URL}/xpdf-tools-win-${VERSION}.zip"
+
+          ls -la
+
+      - name: Extract archives (only when new)
+        if: steps.check.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.upstream.outputs.version }}"
+
+          mkdir -p work/extract
+          tar -xzf "work/download/xpdf-tools-linux-${VERSION}.tar.gz" -C work/extract
+          tar -xzf "work/download/xpdf-tools-mac-${VERSION}.tar.gz"   -C work/extract
+          unzip -q  "work/download/xpdf-tools-win-${VERSION}.zip"     -d work/extract
+
+          ls -la work/extract
+
+      - name: Package by platform + arch (bin-only zips) (only when new)
+        if: steps.check.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.upstream.outputs.version }}"
+
+          mkdir -p work/release
+          OUT_DIR="$(pwd)/work/release"
+
+          LINUX_DIR="xpdf-tools-linux-${VERSION}"
+          MAC_DIR="xpdf-tools-mac-${VERSION}"
+          WIN_DIR="xpdf-tools-win-${VERSION}"
+
+          zip_bins() {
+            local base_dir="$1"   # e.g. xpdf-tools-linux-<ver>
+            local bin_dir="$2"    # bin32 | bin64 | binARM
+            local out_name="$3"   # output zip filename
+
+            local src="work/extract/${base_dir}/${bin_dir}"
+
+            # Skip if folder missing
+            if [[ ! -d "$src" ]]; then
+              echo "Skip: missing $src"
+              return 0
+            fi
+
+            # Skip if folder exists but has no files
+            if ! find "$src" -maxdepth 1 -type f -print -quit | grep -q .; then
+              echo "Skip: empty $src"
+              return 0
+            fi
+
+            # Zip only the bin files, no extra folders in zip
+            (cd "$src" && zip -qr "${OUT_DIR}/${out_name}" .)
+            echo "Created: ${OUT_DIR}/${out_name}"
+          }
+
+          # Linux
+          zip_bins "${LINUX_DIR}" bin32  "xpdf-tools-linux-${VERSION}-x86.zip"
+          zip_bins "${LINUX_DIR}" bin64  "xpdf-tools-linux-${VERSION}-x86_64.zip"
+          zip_bins "${LINUX_DIR}" binARM "xpdf-tools-linux-${VERSION}-arm.zip"
+
+          # macOS
+          zip_bins "${MAC_DIR}"   bin64  "xpdf-tools-mac-${VERSION}-x86_64.zip"
+          zip_bins "${MAC_DIR}"   binARM "xpdf-tools-mac-${VERSION}-arm.zip"
+
+          # Windows
+          zip_bins "${WIN_DIR}"   bin32  "xpdf-tools-win-${VERSION}-x86.zip"
+          zip_bins "${WIN_DIR}"   bin64  "xpdf-tools-win-${VERSION}-x86_64.zip"
+          zip_bins "${WIN_DIR}"   binARM "xpdf-tools-win-${VERSION}-arm.zip"
+
+          ls -la work/release
+
+      - name: Upload assets to 'latest' release (only when new)
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          title="Mirror Xpdf ${{ steps.upstream.outputs.version }} (latest)"
+          ver="${{ steps.upstream.outputs.version }}"
+
+          body=$'Moving "latest" release for xpdf console builds.\n\n'
+          body+=$'Upstream version: '"$ver"$'\n'
+          body+=$'Source: https://www.xpdfreader.com/\n\n'
+          body+=$'Automated packaging of Xpdf command line tools whenever upstream version changes.\n'
+
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title "$title" --notes "$body"
+          else
+            gh release create latest --title "$title" --notes "$body"
+          fi
+
+          # Upload new assets (clobber replaces same-name assets)
+          gh release upload latest work/release/* --clobber

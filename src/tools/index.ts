@@ -1,0 +1,9 @@
+export { pdftotext } from "./pdftotext";
+export { pdftops } from "./pdftops";
+export { pdftoppm } from "./pdftoppm";
+export { pdftopng } from "./pdftopng";
+export { pdftohtml } from "./pdftohtml";
+export { pdfinfo } from "./pdfinfo";
+export { pdfimages } from "./pdfimages";
+export { pdffonts } from "./pdffonts";
+export { pdfdetach } from "./pdfdetach";

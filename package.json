@@ -1,0 +1,52 @@
+{
+  "name": "node-xpdf",
+  "version": "0.1.0",
+  "description": "Node.js wrapper for Xpdf command-line tools",
+  "license": "MIT",
+  "author": "Rashed Iqbal <dev.rashediqbal@gmail.com>",
+  "repository": "https://github.com/iqbal-rashed/node-xpdf.git",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "eslint . --ext .ts,.js,.mjs",
+    "lint:fix": "eslint . --ext .ts,.js,.mjs --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postdownload": "node ./dist/postinstall.js",
+    "postinstall": "node -e \"process.env.INIT_CWD !== process.cwd() && require('child_process').execSync('npm run postdownload', { stdio: 'inherit' });\""
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "7zip-wrapper": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.5",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.16"
+  }
+}
