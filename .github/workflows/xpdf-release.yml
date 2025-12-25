@@ -32,17 +32,7 @@ jobs:
           HTML="$(curl -fsSL "$DOWNLOAD_PAGE")"
 
           VERSION="$(
-            python3 -c '
-              import re, sys
-              html = sys.stdin.read()
-              pattern = re.compile(r"xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\.[0-9]+)+)")
-              versions = pattern.findall(html)
-              if not versions:
-                  raise SystemExit("ERROR: Could not find any xpdf-tools-* version strings on download page.")
-              def key(v):
-                  return tuple(int(x) for x in v.split("."))
-              print(max(versions, key=key))
-              ' <<< "$HTML"
+            python3 -c "import re,sys; html=sys.stdin.read(); pat=re.compile(r'xpdf-tools-(?:linux|win|mac)-([0-9]+(?:\\.[0-9]+)+)'); vers=pat.findall(html);if not vers: raise SystemExit('ERROR: Could not find any xpdf-tools-* version strings on download page.');key=lambda v: tuple(int(x) for x in v.split('.')); print(max(vers, key=key))" <<< "$HTML"
           )"
 
           echo "Latest upstream version: $VERSION"
