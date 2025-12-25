@@ -197,7 +197,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          title="Xpdf ${{ steps.upstream.outputs.version }} (latest)"
+          title="Mirror Xpdf ${{ steps.upstream.outputs.version }} (latest)"
           ver="${{ steps.upstream.outputs.version }}"
 
           body=$'Moving "latest" release for xpdf console builds.\n\n'
