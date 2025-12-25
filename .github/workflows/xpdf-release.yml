@@ -135,62 +135,48 @@ jobs:
 
           ls -la work/extract
 
-      - name: Package by platform + arch (only when new)
+      - name: Package by platform + arch (bin-only zips) (only when new)
         if: steps.check.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
           VERSION="${{ steps.upstream.outputs.version }}"
 
-          mkdir -p work/release work/stage
-
-          cp -v work/download/* work/release/
+          mkdir -p work/release
 
           LINUX_DIR="xpdf-tools-linux-${VERSION}"
           MAC_DIR="xpdf-tools-mac-${VERSION}"
           WIN_DIR="xpdf-tools-win-${VERSION}"
 
-          (cd work && zip -qr "release/${LINUX_DIR}-full.zip" "extract/${LINUX_DIR}")
-          (cd work && zip -qr "release/${MAC_DIR}-full.zip"   "extract/${MAC_DIR}")
-          (cd work && zip -qr "release/${WIN_DIR}-full.zip"   "extract/${WIN_DIR}")
+          zip_bins() {
+            local base_dir="$1"   # e.g. xpdf-tools-linux-<ver>
+            local bin_dir="$2"    # bin32 | bin64 | binARM
+            local out_name="$3"   # output zip filename
 
-          zip_arch() {
-            local dir="$1"
-            local keep_bin="$2"
-            local label="$3"
-
-            if [[ ! -d "work/extract/${dir}" ]]; then
-              return 0
-            fi
-            if [[ ! -d "work/extract/${dir}/${keep_bin}" ]]; then
+            local src="work/extract/${base_dir}/${bin_dir}"
+            if [[ ! -d "$src" ]]; then
+              echo "Skip: missing $src"
               return 0
             fi
 
-            local tmp="work/stage/${dir}-${label}"
-            rm -rf "$tmp"
-            mkdir -p "$tmp"
-
-            cp -R "work/extract/${dir}" "$tmp/"
-
-            for b in bin32 bin64 binARM; do
-              if [[ "$b" != "$keep_bin" ]]; then
-                rm -rf "${tmp}/${dir}/${b}" || true
-              fi
-            done
-
-            (cd "$tmp" && zip -qr "../../release/${dir}-${label}.zip" "$dir")
+            # zip ONLY the bin files; -j = junk paths (files at zip root)
+            (cd "$src" && zip -qr "../../../work/release/${out_name}" .)
+            echo "Created: work/release/${out_name}"
           }
 
-          zip_arch "${LINUX_DIR}" bin32  x86
-          zip_arch "${LINUX_DIR}" bin64  x86_64
-          zip_arch "${LINUX_DIR}" binARM arm
+          # Linux (bin-only)
+          zip_bins "${LINUX_DIR}" bin32  "xpdf-tools-linux-${VERSION}-x86.zip"
+          zip_bins "${LINUX_DIR}" bin64  "xpdf-tools-linux-${VERSION}-x86_64.zip"
+          zip_bins "${LINUX_DIR}" binARM "xpdf-tools-linux-${VERSION}-arm.zip"
 
-          zip_arch "${MAC_DIR}"   bin64  x86_64
-          zip_arch "${MAC_DIR}"   binARM arm
+          # macOS (bin-only)
+          zip_bins "${MAC_DIR}"   bin64  "xpdf-tools-mac-${VERSION}-x86_64.zip"
+          zip_bins "${MAC_DIR}"   binARM "xpdf-tools-mac-${VERSION}-arm.zip"
 
-          zip_arch "${WIN_DIR}"   bin32  x86
-          zip_arch "${WIN_DIR}"   bin64  x86_64
-          zip_arch "${WIN_DIR}"   binARM arm
+          # Windows (bin-only)
+          zip_bins "${WIN_DIR}"   bin32  "xpdf-tools-win-${VERSION}-x86.zip"
+          zip_bins "${WIN_DIR}"   bin64  "xpdf-tools-win-${VERSION}-x86_64.zip"
+          zip_bins "${WIN_DIR}"   binARM "xpdf-tools-win-${VERSION}-arm.zip"
 
           ls -la work/release
 
