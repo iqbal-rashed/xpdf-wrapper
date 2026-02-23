@@ -1,9 +1,6 @@
 name: Sync Xpdf Tools (weekly -> latest release)
 
 on:
-  schedule:
-    # Every Monday 03:00 UTC (~09:00 Asia/Dhaka)
-    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 permissions:
